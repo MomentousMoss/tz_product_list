@@ -9,11 +9,13 @@ lifecycleRuntimeKtx = "2.8.4"
 activityCompose = "1.8.0"
 composeBom = "2024.04.01"
 roomVersion = "2.6.1"
+gsonVersion = "2.10.1"
 
 [libraries]
 androidx-room = { group = "androidx.room", name = "room-runtime", version.ref = "roomVersion" }
 androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "roomVersion" }
 androidx-room-annotation-processor = { group = "androidx.room", name = "room-compiler", version.ref = "roomVersion" }
+gson = { group = "com.google.code.gson", name = "gson", version.ref = "gsonVersion"}
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
