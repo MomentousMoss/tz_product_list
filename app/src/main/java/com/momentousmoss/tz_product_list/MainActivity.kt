@@ -34,12 +34,14 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.SnapshotStateList
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
@@ -50,18 +52,21 @@ import androidx.compose.ui.unit.sp
 import androidx.room.Room
 import com.momentousmoss.tz_product_list.database.AppDatabase
 import com.momentousmoss.tz_product_list.database.Product
+import com.momentousmoss.tz_product_list.utils.MutableSingleLiveEvent
 import com.momentousmoss.tz_product_list.utils.convertStringToListString
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
+import com.momentousmoss.tz_product_list.utils.dateStringToDateFormat
+import com.momentousmoss.tz_product_list.utils.toProductEntity
 
 class MainActivity : ComponentActivity() {
 
+    private val searchLiveEvent = MutableSingleLiveEvent<Unit>()
+
     private val database by lazy {
-        Room.databaseBuilder(
-            baseContext,
-            AppDatabase::class.java, "database"
-        ).allowMainThreadQueries().fallbackToDestructiveMigration().build()
+        Room.databaseBuilder(baseContext, AppDatabase::class.java, "database")
+            .createFromAsset("database.db")
+            .allowMainThreadQueries()
+            .fallbackToDestructiveMigration()
+            .build()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -83,8 +88,9 @@ class MainActivity : ComponentActivity() {
                 do {
                     productsList.add(
                         Product(
+                            id = it.getInt(0),
                             name = it.getString(1),
-                            time = it.getInt(2),
+                            time = it.getLong(2),
                             tags = it.getString(3),
                             amount = it.getInt(4)
                         )
@@ -98,7 +104,7 @@ class MainActivity : ComponentActivity() {
             }
             productsList.forEach {
                 item {
-                    ItemCard(it)
+                    ProductCardView(it)
                 }
             }
         }
@@ -108,13 +114,17 @@ class MainActivity : ComponentActivity() {
     @Composable
     fun SearchBar(productsList: SnapshotStateList<Product>) {
         var searchText by rememberSaveable { mutableStateOf("") }
+        searchLiveEvent.observeForever {
+            searchBarAction(searchText, productsList)
+        }
         SearchBar(
             query = searchText,
             onQueryChange = {
                 searchText = it
+                searchLiveEvent.call()
             },
             onSearch = {
-                searchBarAction(searchText, productsList)
+                searchLiveEvent.call()
             },
             active = false,
             onActiveChange = {},
@@ -125,7 +135,7 @@ class MainActivity : ComponentActivity() {
                 IconButton(
                     onClick = {
                         searchText = ""
-                        searchBarAction(searchText, productsList)
+                        searchLiveEvent.call()
                     },
                 ) {
                     Icon(
@@ -139,29 +149,28 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun searchBarAction(searchText: String, productsList: SnapshotStateList<Product>) {
-        CoroutineScope(Dispatchers.IO).launch {
-            val searchProductsCursor =
-                database.ProductsDao().getProductsBySearch(searchText = searchText)
-            productsList.clear()
-            searchProductsCursor.let {
-                if (it.moveToFirst()) {
-                    do {
-                        productsList.add(
-                            Product(
-                                name = it.getString(1),
-                                time = it.getInt(2),
-                                tags = it.getString(3),
-                                amount = it.getInt(4)
-                            )
+        val searchProductsCursor = database.ProductsDao().getProductsBySearch(searchText)
+        productsList.clear()
+        searchProductsCursor.let {
+            if (it.moveToFirst()) {
+                do {
+                    productsList.add(
+                        Product(
+                            id = it.getInt(0),
+                            name = it.getString(1),
+                            time = it.getLong(2),
+                            tags = it.getString(3),
+                            amount = it.getInt(4)
                         )
-                    } while (it.moveToNext())
-                }
+                    )
+                } while (it.moveToNext())
             }
         }
     }
 
     @Composable
-    fun DialogChange(onDismissRequest: () -> Unit) {
+    fun DialogChange(product: Product, onDismissRequest: () -> Unit) {
+        var productAmount by rememberSaveable { mutableIntStateOf(product.amount) }
         AlertDialog(
             icon = {
                 Icon(Icons.Default.Settings, contentDescription = "dialogIcon")
@@ -169,13 +178,45 @@ class MainActivity : ComponentActivity() {
             title = {
                 Text(text = "Количество товара")
             },
+            text = {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+                    Image(
+                        painter = painterResource(id = R.drawable.button_minus),
+                        contentDescription = "buttonMinus",
+                        modifier = Modifier
+                            .align(Alignment.CenterVertically)
+                            .padding(end = 8.dp)
+                            .clickable {
+                                if (productAmount > 0) {
+                                    productAmount--
+                                }
+                            }
+                    )
+                    Text(
+                        text = "$productAmount",
+                        modifier = Modifier.align(Alignment.CenterVertically)
+                    )
+                    Image(
+                        painter = painterResource(id = R.drawable.button_plus),
+                        contentDescription = "buttonPlus",
+                        modifier = Modifier
+                            .align(Alignment.CenterVertically)
+                            .padding(start = 8.dp)
+                            .clickable {
+                                productAmount++
+                            }
+                    )
+                }
+            },
             onDismissRequest = {
                 onDismissRequest()
             },
             confirmButton = {
                 TextButton(
                     onClick = {
-                        // Add logic here to handle confirmation.
+                        product.amount = productAmount
+                        database.ProductsDao().updateProduct(product.toProductEntity())
+                        searchLiveEvent.call()
                         onDismissRequest()
                     }
                 ) {
@@ -195,7 +236,7 @@ class MainActivity : ComponentActivity() {
     }
 
     @Composable
-    fun DialogDelete(onDismissRequest: () -> Unit) {
+    fun DialogDelete(productId: Int, onDismissRequest: () -> Unit) {
         AlertDialog(
             icon = {
                 Icon(Icons.Default.Warning, contentDescription = "dialogIcon")
@@ -212,7 +253,8 @@ class MainActivity : ComponentActivity() {
             confirmButton = {
                 TextButton(
                     onClick = {
-                        // Add logic here to handle confirmation.
+                        database.ProductsDao().deleteById(productId)
+                        searchLiveEvent.call()
                         onDismissRequest()
                     }
                 ) {
@@ -232,7 +274,7 @@ class MainActivity : ComponentActivity() {
     }
 
     @Composable
-    fun ItemCard(product: Product) {
+    fun ProductCardView(product: Product) {
         ElevatedCard(
             elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
             modifier = Modifier
@@ -240,30 +282,30 @@ class MainActivity : ComponentActivity() {
                 .wrapContentHeight()
                 .padding(8.dp)
         ) {
-            ItemCardHeader(product.name)
-            ItemCardTags(product.tags)
-            ItemCardStatistics(product.amount, product.time)
+            ProductHeaderView(product)
+            ProductTagsView(product.tags)
+            ProductStatisticsView(product)
             Spacer(modifier = Modifier.padding(bottom = 8.dp))
         }
     }
 
     @OptIn(ExperimentalLayoutApi::class)
     @Composable
-    fun ItemCardHeader(productName: String) {
+    fun ProductHeaderView(product: Product) {
         FlowRow(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(start = 8.dp, top = 8.dp, end = 8.dp),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            ItemTitle(titleText = productName)
-            CardButtons()
+            ProductTitleView(titleText = "${product.id}. ${product.name}")
+            ButtonsView(product)
         }
     }
 
     @OptIn(ExperimentalLayoutApi::class)
     @Composable
-    fun ItemCardTags(productTags: String) {
+    fun ProductTagsView(productTags: String) {
         FlowRow(
             modifier = Modifier.padding(start = 8.dp, top = 12.dp, end = 8.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -271,26 +313,26 @@ class MainActivity : ComponentActivity() {
         ) {
             val productTagsList = convertStringToListString(productTags)
             productTagsList.forEach {
-                ItemTag(productTag = it)
+                ProductTag(productTag = it)
             }
         }
     }
 
     @Composable
-    fun ItemCardStatistics(productAmount: Int, productTime: Int) {
+    fun ProductStatisticsView(product: Product) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(start = 8.dp, top = 8.dp, end = 8.dp),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            ItemCount(productAmount = productAmount)
-            ItemDate(productTime = productTime)
+            ProductAmountView(product = product)
+            ProductTimeView(productTime = product.time)
         }
     }
 
     @Composable
-    fun ItemTitle(titleText: String) {
+    fun ProductTitleView(titleText: String) {
         Text(
             style = TextStyle(
                 fontSize = 20.sp,
@@ -302,15 +344,15 @@ class MainActivity : ComponentActivity() {
     }
 
     @Composable
-    fun CardButtons() {
-        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            ButtonChangeCount()
-            ButtonDelete()
+    fun ButtonsView(product: Product) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            ButtonChangeAmount(product)
+            ButtonDelete(product.id)
         }
     }
 
     @Composable
-    fun ButtonChangeCount() {
+    fun ButtonChangeAmount(product: Product) {
         val showChangeDialog = remember { mutableStateOf(false) }
         Image(
             painter = painterResource(id = R.drawable.button_edit),
@@ -320,12 +362,12 @@ class MainActivity : ComponentActivity() {
             }
         )
         if (showChangeDialog.value) {
-            DialogChange(onDismissRequest = { showChangeDialog.value = false })
+            DialogChange(product, onDismissRequest = { showChangeDialog.value = false })
         }
     }
 
     @Composable
-    fun ButtonDelete() {
+    fun ButtonDelete(productId: Int) {
         val showDeleteDialog = remember { mutableStateOf(false) }
         Image(
             painter = painterResource(id = R.drawable.button_delete),
@@ -335,12 +377,12 @@ class MainActivity : ComponentActivity() {
             }
         )
         if (showDeleteDialog.value) {
-            DialogDelete(onDismissRequest = { showDeleteDialog.value = false })
+            DialogDelete(productId, onDismissRequest = { showDeleteDialog.value = false })
         }
     }
 
     @Composable
-    fun ItemTag(productTag: String) {
+    fun ProductTag(productTag: String) {
         OutlinedCard(
             border = BorderStroke(0.dp, Color.Black),
             modifier = Modifier.wrapContentSize()
@@ -354,7 +396,7 @@ class MainActivity : ComponentActivity() {
     }
 
     @Composable
-    fun ItemCount(productAmount: Int) {
+    fun ProductAmountView(product: Product) {
         Column {
             Text(
                 style = TextStyle(fontSize = 10.sp, color = Color.Black),
@@ -367,14 +409,14 @@ class MainActivity : ComponentActivity() {
                     color = Color.Black,
                     fontWeight = FontWeight.Light
                 ),
-                text = if (productAmount < 1) "Нет в наличии" else productAmount.toString()
+                text = if (product.amount < 1) "Нет в наличии" else "${product.amount}"
             )
         }
 
     }
 
     @Composable
-    fun ItemDate(productTime: Int) {
+    fun ProductTimeView(productTime: Long) {
         Column {
             Text(
                 style = TextStyle(fontSize = 10.sp, color = Color.Black),
@@ -387,7 +429,7 @@ class MainActivity : ComponentActivity() {
                     color = Color.Black,
                     fontWeight = FontWeight.Light
                 ),
-                text = productTime.toString()
+                text = dateStringToDateFormat(productTime)
             )
         }
     }

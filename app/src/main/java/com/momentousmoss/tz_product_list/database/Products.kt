@@ -23,23 +23,27 @@ interface ProductsDao {
     @Query("SELECT * FROM ProductsEntity WHERE name LIKE '%' || :searchText || '%'")
     fun getProductsBySearch(searchText: String?): Cursor
 
+    @Query("DELETE FROM ProductsEntity WHERE id = :productId")
+    fun deleteById(productId: Int)
+
     @Query("DELETE FROM ProductsEntity")
     fun clear()
 }
 
 @Entity
-class ProductsEntity (
+class ProductsEntity(
     @PrimaryKey(autoGenerate = true)
     var id: Int? = null,
     var name: String,
-    var time: Int,
+    var time: Long,
     var tags: String = "[]",
     var amount: Int = 0
 )
 
 data class Product (
+    var id: Int,
     var name: String,
-    var time: Int,
+    var time: Long,
     var tags: String = "",
     var amount: Int = 0
 )
