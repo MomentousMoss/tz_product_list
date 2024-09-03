@@ -1,5 +1,6 @@
 package com.momentousmoss.tz_product_list.utils
 
+import android.database.Cursor
 import androidx.room.TypeConverter
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
@@ -26,4 +27,12 @@ fun Product.toProductEntity() = ProductsEntity(
     time = time,
     tags = tags,
     amount = amount
+)
+
+fun Cursor.toProduct() = Product(
+    id = getInt(0),
+    name = getString(1),
+    time = getLong(2),
+    tags = getString(3),
+    amount = getInt(4)
 )

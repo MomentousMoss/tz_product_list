@@ -1,3 +1,31 @@
 <resources>
     <string name="app_name">tz_product_list</string>
+
+    <string name="database_name">database</string>
+    <string name="database_file_name">database.db</string>
+
+    <string name="content_description_search_icon">searchIcon</string>
+    <string name="content_description_close_icon">closeIcon</string>
+    <string name="content_description_dialog_icon">dialogIcon</string>
+    <string name="content_description_button_minus_icon">buttonMinusIcon</string>
+    <string name="content_description_button_plus_icon">buttonPlusIcon</string>
+    <string name="content_description_warning_icon">warningIcon</string>
+    <string name="content_description_button_change_icon">buttonChangeIcon</string>
+    <string name="content_description_button_delete_icon">buttonDeleteIcon</string>
+
+    <string name="search_bar_placeholder">Поиск товаров</string>
+
+    <string name="dialog_change_title">Количество товара</string>
+    <string name="dialog_change_button_positive">Принять</string>
+    <string name="dialog_change_button_negative">Отмена</string>
+
+    <string name="dialog_delete_title">Удаление товара</string>
+    <string name="dialog_delete_description">Вы действительно хотите удалить выбранный товар?</string>
+    <string name="dialog_delete_positive_button">Да</string>
+    <string name="dialog_delete_negative_button">Нет</string>
+
+    <string name="card_amount_title">На складе</string>
+    <string name="card_amount_unavailable">Нет в наличии</string>
+
+    <string name="card_time_title">Дата добавления</string>
 </resources>

@@ -3,7 +3,6 @@ package com.momentousmoss.tz_product_list
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -15,7 +14,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentHeight
-import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
@@ -28,8 +26,8 @@ import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.SearchBar
+import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -55,6 +53,7 @@ import com.momentousmoss.tz_product_list.database.Product
 import com.momentousmoss.tz_product_list.utils.MutableSingleLiveEvent
 import com.momentousmoss.tz_product_list.utils.convertStringToListString
 import com.momentousmoss.tz_product_list.utils.dateStringToDateFormat
+import com.momentousmoss.tz_product_list.utils.toProduct
 import com.momentousmoss.tz_product_list.utils.toProductEntity
 
 class MainActivity : ComponentActivity() {
@@ -62,8 +61,8 @@ class MainActivity : ComponentActivity() {
     private val searchLiveEvent = MutableSingleLiveEvent<Unit>()
 
     private val database by lazy {
-        Room.databaseBuilder(baseContext, AppDatabase::class.java, "database")
-            .createFromAsset("database.db")
+        Room.databaseBuilder(baseContext, AppDatabase::class.java, getString(R.string.database_name))
+            .createFromAsset(getString(R.string.database_file_name))
             .allowMainThreadQueries()
             .fallbackToDestructiveMigration()
             .build()
@@ -86,26 +85,14 @@ class MainActivity : ComponentActivity() {
         productsCursor.let {
             if (it.moveToFirst()) {
                 do {
-                    productsList.add(
-                        Product(
-                            id = it.getInt(0),
-                            name = it.getString(1),
-                            time = it.getLong(2),
-                            tags = it.getString(3),
-                            amount = it.getInt(4)
-                        )
-                    )
+                    productsList.add(it.toProduct())
                 } while (it.moveToNext())
             }
         }
         LazyColumn {
-            item {
-                SearchBar(productsList)
-            }
+            item { SearchBar(productsList) }
             productsList.forEach {
-                item {
-                    ProductCardView(it)
-                }
+                item { ProductCardView(it) }
             }
         }
     }
@@ -123,13 +110,11 @@ class MainActivity : ComponentActivity() {
                 searchText = it
                 searchLiveEvent.call()
             },
-            onSearch = {
-                searchLiveEvent.call()
-            },
+            onSearch = { searchLiveEvent.call() },
             active = false,
             onActiveChange = {},
             leadingIcon = {
-                Icon(Icons.Default.Search, contentDescription = "searchIcon")
+                Icon(Icons.Default.Search, getString(R.string.content_description_search_icon))
             },
             trailingIcon = {
                 IconButton(
@@ -140,11 +125,11 @@ class MainActivity : ComponentActivity() {
                 ) {
                     Icon(
                         imageVector = Icons.Rounded.Close,
-                        contentDescription = "closeIcon"
+                        contentDescription = getString(R.string.content_description_close_icon)
                     )
                 }
             },
-            placeholder = { Text("Поиск товаров") }
+            placeholder = { Text(getString(R.string.search_bar_placeholder)) }
         ) {}
     }
 
@@ -154,15 +139,7 @@ class MainActivity : ComponentActivity() {
         searchProductsCursor.let {
             if (it.moveToFirst()) {
                 do {
-                    productsList.add(
-                        Product(
-                            id = it.getInt(0),
-                            name = it.getString(1),
-                            time = it.getLong(2),
-                            tags = it.getString(3),
-                            amount = it.getInt(4)
-                        )
-                    )
+                    productsList.add(it.toProduct())
                 } while (it.moveToNext())
             }
         }
@@ -173,16 +150,14 @@ class MainActivity : ComponentActivity() {
         var productAmount by rememberSaveable { mutableIntStateOf(product.amount) }
         AlertDialog(
             icon = {
-                Icon(Icons.Default.Settings, contentDescription = "dialogIcon")
+                Icon(Icons.Default.Settings, getString(R.string.content_description_dialog_icon))
             },
-            title = {
-                Text(text = "Количество товара")
-            },
+            title = { Text(text = getString(R.string.dialog_change_title)) },
             text = {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
                     Image(
                         painter = painterResource(id = R.drawable.button_minus),
-                        contentDescription = "buttonMinus",
+                        contentDescription = getString(R.string.content_description_button_minus_icon),
                         modifier = Modifier
                             .align(Alignment.CenterVertically)
                             .padding(end = 8.dp)
@@ -198,7 +173,7 @@ class MainActivity : ComponentActivity() {
                     )
                     Image(
                         painter = painterResource(id = R.drawable.button_plus),
-                        contentDescription = "buttonPlus",
+                        contentDescription = getString(R.string.content_description_button_plus_icon),
                         modifier = Modifier
                             .align(Alignment.CenterVertically)
                             .padding(start = 8.dp)
@@ -208,9 +183,7 @@ class MainActivity : ComponentActivity() {
                     )
                 }
             },
-            onDismissRequest = {
-                onDismissRequest()
-            },
+            onDismissRequest = { onDismissRequest() },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -220,16 +193,12 @@ class MainActivity : ComponentActivity() {
                         onDismissRequest()
                     }
                 ) {
-                    Text("Принять")
+                    Text(getString(R.string.dialog_change_button_positive))
                 }
             },
             dismissButton = {
-                TextButton(
-                    onClick = {
-                        onDismissRequest()
-                    }
-                ) {
-                    Text("Отмена")
+                TextButton(onClick = { onDismissRequest() }) {
+                    Text(getString(R.string.dialog_change_button_negative))
                 }
             }
         )
@@ -239,17 +208,11 @@ class MainActivity : ComponentActivity() {
     fun DialogDelete(productId: Int, onDismissRequest: () -> Unit) {
         AlertDialog(
             icon = {
-                Icon(Icons.Default.Warning, contentDescription = "dialogIcon")
+                Icon(Icons.Default.Warning, getString(R.string.content_description_warning_icon))
             },
-            title = {
-                Text(text = "Удаление товара")
-            },
-            text = {
-                Text(text = "Вы действительно хотите удалить выбранный товар?")
-            },
-            onDismissRequest = {
-                onDismissRequest()
-            },
+            title = { Text(text = getString(R.string.dialog_delete_title)) },
+            text = { Text(text = getString(R.string.dialog_delete_description)) },
+            onDismissRequest = { onDismissRequest() },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -258,16 +221,12 @@ class MainActivity : ComponentActivity() {
                         onDismissRequest()
                     }
                 ) {
-                    Text("Да")
+                    Text(getString(R.string.dialog_delete_positive_button))
                 }
             },
             dismissButton = {
-                TextButton(
-                    onClick = {
-                        onDismissRequest()
-                    }
-                ) {
-                    Text("Нет")
+                TextButton(onClick = { onDismissRequest() }) {
+                    Text(getString(R.string.dialog_delete_negative_button))
                 }
             }
         )
@@ -307,8 +266,8 @@ class MainActivity : ComponentActivity() {
     @Composable
     fun ProductTagsView(productTags: String) {
         FlowRow(
-            modifier = Modifier.padding(start = 8.dp, top = 12.dp, end = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+            modifier = Modifier.padding(start = 8.dp, top = 8.dp, end = 8.dp),
+            verticalArrangement = Arrangement.spacedBy((-12).dp),
             horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             val productTagsList = convertStringToListString(productTags)
@@ -356,7 +315,7 @@ class MainActivity : ComponentActivity() {
         val showChangeDialog = remember { mutableStateOf(false) }
         Image(
             painter = painterResource(id = R.drawable.button_edit),
-            contentDescription = "buttonChange",
+            contentDescription = getString(R.string.content_description_button_change_icon),
             modifier = Modifier.clickable {
                 showChangeDialog.value = !showChangeDialog.value
             }
@@ -371,7 +330,7 @@ class MainActivity : ComponentActivity() {
         val showDeleteDialog = remember { mutableStateOf(false) }
         Image(
             painter = painterResource(id = R.drawable.button_delete),
-            contentDescription = "buttonDelete",
+            contentDescription = getString(R.string.content_description_button_delete_icon),
             modifier = Modifier.clickable {
                 showDeleteDialog.value = !showDeleteDialog.value
             }
@@ -383,16 +342,10 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     fun ProductTag(productTag: String) {
-        OutlinedCard(
-            border = BorderStroke(0.dp, Color.Black),
-            modifier = Modifier.wrapContentSize()
-        ) {
-            Text(
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                style = TextStyle(fontSize = 12.sp, color = Color.Black),
-                text = productTag
-            )
-        }
+        SuggestionChip(
+            onClick = { },
+            label = { Text(text = productTag) }
+        )
     }
 
     @Composable
@@ -400,7 +353,7 @@ class MainActivity : ComponentActivity() {
         Column {
             Text(
                 style = TextStyle(fontSize = 10.sp, color = Color.Black),
-                text = "На складе"
+                text = getString(R.string.card_amount_title)
             )
             Text(
                 modifier = Modifier.padding(top = 4.dp),
@@ -409,7 +362,11 @@ class MainActivity : ComponentActivity() {
                     color = Color.Black,
                     fontWeight = FontWeight.Light
                 ),
-                text = if (product.amount < 1) "Нет в наличии" else "${product.amount}"
+                text = if (product.amount < 1) {
+                    getString(R.string.card_amount_unavailable)
+                } else {
+                    "${product.amount}"
+                }
             )
         }
 
@@ -420,7 +377,7 @@ class MainActivity : ComponentActivity() {
         Column {
             Text(
                 style = TextStyle(fontSize = 10.sp, color = Color.Black),
-                text = "Дата добавления"
+                text = getString(R.string.card_time_title)
             )
             Text(
                 modifier = Modifier.padding(top = 4.dp),
