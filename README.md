@@ -2,9 +2,11 @@
 
 **Затрачено:** ~ 12 часов
 
+**Release build:** ![tz_product_list/ip-test-task.apk](https://github.com/MomentousMoss/tz_product_list/blob/32e3192f9bc5f603993dc7d63fc8acf7787f80c0/ip-test-task.apk)
+
 **Задание:**
 
-![image](https://github.com/user-attachments/assets/1873f5fb-8e6f-472c-9723-a26cbfc460f1)
+![image](https://github.com/user-attachments/assets/d4df8107-7901-46ad-a801-2bc97162c9ee)
 
 **Пример исполнения:**
 
